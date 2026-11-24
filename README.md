@@ -5,7 +5,7 @@
 
 Uniswap v4 is a new automated market maker protocol that provides extensible and customizable pools. `v4-core` hosts the core pool logic for creating pools and executing pool actions like swapping and providing liquidity.
 
-The contracts in this repo are in early stages - we are releasing the draft code now so that v4 can be built in public, with open feedback and meaningful community contribution. We expect this will be a months-long process, and we appreciate any kind of contribution, no matter how small.
+This repository preserves a February 2024 draft of v4-core. The examples below use the interfaces and lock mechanism in this checkout.
 
 ## Contributing
 
@@ -20,13 +20,14 @@ A more detailed description of Uniswap v4 Core can be found in the draft of the 
 `v4-core` uses a singleton-style architecture, where all pool state is managed in the `PoolManager.sol` contract. Pool actions can be taken by acquiring a lock on the contract and implementing the `lockAcquired` callback to then proceed with any of the following actions on the pools:
 
 - `swap`
-- `modifyPosition`
+- `modifyLiquidity`
 - `donate`
 - `take`
 - `settle`
 - `mint`
+- `burn`
 
-Only the net balances owed to the pool (positive) or to the user (negative) are tracked throughout the duration of a lock. This is the `delta` field held in the lock state. Any number of actions can be run on the pools, as long as the deltas accumulated during the lock reach 0 by the lock’s release. This lock and call style architecture gives callers maximum flexibility in integrating with the core code.
+Only the net balances owed to the pool (positive) or to the user (negative) are tracked throughout the duration of a lock. `PoolManager.currencyDelta` records these balances by locker and currency. Any number of actions can be run on the pools, as long as the deltas accumulated during the lock reach zero before the outermost lock is released. This lock and call style architecture gives callers maximum flexibility in integrating with the core code.
 
 Additionally, a pool may be initialized with a hook contract, that can implement any of the following callbacks in the lifecycle of pool actions:
 
@@ -36,61 +37,39 @@ Additionally, a pool may be initialized with a hook contract, that can implement
 - {before,after}Swap
 - {before,after}Donate
 
-Hooks may also elect to specify fees on swaps, or liquidity withdrawal. Much like the actions above, fees are implemented using callback functions.
+For pools configured with a dynamic swap fee, the hook implements `IDynamicFeeManager.getFee`.
 
 The fee values, or callback logic, may be updated by the hooks dependent on their implementation. However _which_ callbacks are executed on a pool, including the type of fee or lack of fee, cannot change after pool initialization.
 
 ## Repository Structure
 
-All contracts are held within the `v4-core/contracts` folder.
-
-Note that helper contracts used by tests are held in the `v4-core/contracts/test` subfolder within the contracts folder. Any new test helper contracts should be added here, but all foundry tests are in the `v4-core/test/foundry-tests` folder.
-
-```markdown
-contracts/
-----interfaces/
-    | IPoolManager.sol
-    | ...
-----libraries/
-    | Position.sol
-    | Pool.sol
-    | ...
-----test
-...
-PoolManager.sol
-test/
-----foundry-tests/
-```
+Core contracts are in [`src/`](./src/), test helpers are in [`src/test/`](./src/test/), and Foundry tests are in [`test/`](./test/).
 
 ## Local deployment and Usage
 
-To utilize the contracts and deploy to a local testnet, you can install the code in your repo with forge:
-
-```markdown
-forge install https://github.com/Uniswap/v4-core
-```
-
-To integrate with the contracts, the interfaces are available to use:
+Use this checkout as the dependency and map `v4-core/` to its root. See the [setup instructions](./CONTRIBUTING.md#setup) to initialize the dependencies.
 
 ```solidity
-
-import {IPoolManager} from 'v4-core/contracts/interfaces/IPoolManager.sol';
-import {ILockCallback} from 'v4-core/contracts/interfaces/callback/ILockCallback.sol';
+import {IPoolManager} from 'v4-core/src/interfaces/IPoolManager.sol';
+import {ILockCallback} from 'v4-core/src/interfaces/callback/ILockCallback.sol';
 
 contract MyContract is ILockCallback {
-    IPoolManager poolManager;
+    IPoolManager public immutable poolManager;
 
-    function doSomethingWithPools() {
-        // this function will call `lockAcquired` below
-        poolManager.lock(...);
+    constructor(IPoolManager manager) {
+        poolManager = manager;
     }
 
-    function lockAcquired(bytes calldata data) external returns (bytes memory) {
-        // perform pool actions
-        poolManager.swap(...)
+    function doSomethingWithPools(bytes calldata data) external returns (bytes memory) {
+        return poolManager.lock(address(this), data);
+    }
+
+    function lockAcquired(address lockCaller, bytes calldata data) external override returns (bytes memory) {
+        require(msg.sender == address(poolManager) && lockCaller == address(this));
+        // Perform pool actions and settle any outstanding deltas here.
+        return data;
     }
 }
-
 ```
 
 ## License
