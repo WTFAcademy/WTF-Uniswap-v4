@@ -1,11 +1,15 @@
 # Uniswap v4 Core
 
-[![Lint](https://github.com/Uniswap/v4-core/actions/workflows/lint.yml/badge.svg)](https://github.com/Uniswap/v4-core/actions/workflows/lint.yml)
-[![Tests](https://github.com/Uniswap/v4-core/actions/workflows/tests.yml/badge.svg)](https://github.com/Uniswap/v4-core/actions/workflows/tests.yml)
+Start with [the runnable Uniswap v4.0.0 example](./examples/current/README.md).
+It uses the official release's pool manager, initializes a pool in a local
+test, and demonstrates the `unlock` and `unlockCallback` interface. The
+[Uniswap v4 documentation](https://docs.uniswap.org/contracts/v4/overview)
+covers hooks, liquidity, swaps, and settlement on the released protocol.
 
-Uniswap v4 is a new automated market maker protocol that provides extensible and customizable pools. `v4-core` hosts the core pool logic for creating pools and executing pool actions like swapping and providing liquidity.
+## February 2024 draft
 
-This repository preserves a February 2024 draft of v4-core. The examples below use the interfaces and lock mechanism in this checkout.
+The root-level source, translated paper, and examples below document the
+February 2024 draft, whose callback is named `lockAcquired`.
 
 ## Contributing
 
