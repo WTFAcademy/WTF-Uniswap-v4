@@ -46,9 +46,14 @@ All contributions must follow the below standards. Maintainers will close out PR
 
 ## Setup
 
-`forge build` to get contract artifacts and dependencies for forge
+Initialize the contract submodules and install the dependencies used by the JavaScript tests before building:
 
-`forge test` to run forge tests and update snapshots
+```sh
+git submodule update --init --recursive
+yarn --cwd test/js-scripts install --frozen-lockfile
+forge build
+forge test
+```
 
 ## Code of Conduct
 
